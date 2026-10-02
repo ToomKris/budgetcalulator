@@ -1,41 +1,67 @@
-# Budget Calculator
+# 💸 Budget Calculator
 
-An interactive budget tracker that runs entirely in the browser. It's a web version of the Finance Hub I use in Notion: log what comes in and goes out, compare it with a monthly plan, and watch loans and trip budgets update by themselves.
+> *"I'm on a budget. It's called 'see food, check bank account, cry, buy groceries anyway.'"* 🥲
 
-**Live site:** https://toomkris.github.io/budgetcalulator/
-**Portfolio:** https://toomkris.github.io/work/
+A budget tracker that runs right in your browser. It's the web version of the Finance Hub I use in Notion. Log what comes in 💰 and what goes out 💸, compare it with your monthly plan 🎯, and watch your loans and trip budgets update by themselves ✨.
 
-## What it does
+🌐 **Live site:** https://toomkris.github.io/budgetcalulator/
+👋 **Portfolio:** https://toomkris.github.io/work/
 
-- **Left to spend**: a big number at the top for the chosen month, with a bar that splits your income into Needs, Wants, Debt, Savings and what's left.
-- **Transactions**: add, edit, search and filter income and spending. Each one has a type, category, status (Paid or Planned), account, payment method and notes.
-- **Monthly budgets**: set a plan per category and group (Needs, Wants, Debt, Savings, Income). The overview compares the plan with what you actually spent and warns you when a category gets close to its limit or goes over.
-- **Planned spending**: transactions marked Planned show up separately, so you can see upcoming costs before they happen.
-- **Loans**: track original amount, monthly payment, interest and due day. Link loan payments to a loan and the payoff bar, remaining amount and months left update automatically.
-- **Trips & events**: give a trip, event or birthday its own budget, link transactions to it, and see what's spent, planned and left.
-- **Revolut CSV import**: drop in a Revolut statement. Duplicates and declined payments are skipped, common shops are sorted into categories automatically, and anything it can't sort lands in "Needs a category" on the overview.
-- **Backup and restore**: download all your data as a JSON file and load it back later or on another device.
+---
 
-## Your data
+## 🧰 What it does
 
-Everything is saved in your browser's local storage. Nothing is sent to a server. Clearing your browser data removes it, so use **Download backup** now and then.
+- 🔢 **Left to spend**: one big number for the month, plus a colorful bar showing where your money went: 🏠 Needs, 🎈 Wants, 🏦 Debt, 🌱 Savings, and whatever's left (hopefully something 🙏).
+- 🧾 **Transactions**: add, edit, search and filter your income and spending. Each one gets a type, category, status (✅ Paid or 🗓️ Planned), account, payment method and notes.
+- 🎯 **Monthly budgets**: set a plan per category. The overview compares it with what you actually spent, turns 🟡 when you're getting close and 🔴 when you've gone over.
+- 🗓️ **Planned spending**: costs marked Planned get their own list, so next month's hotel doesn't sneak up on you.
+- 🏦 **Loans**: track the amount, monthly payment, interest and due day. Link your payments and the payoff bar, remaining amount and months left update automatically. Every payment counts 💪.
+- ✈️ **Trips & events**: give a trip, event or birthday 🎂 its own budget, link the spending to it, and see what's spent, planned and left.
+- 📥 **Revolut CSV import**: drop in your statement. Duplicates and declined payments get skipped, common shops get sorted into categories automatically 🛒🍔🚇, and anything it can't figure out goes to "Needs a category".
+- 💾 **Backup and restore**: download everything as a JSON file and bring it back later or on another device.
 
-The first visit loads example data so you can see how it works. Use **Clear everything** to start fresh, or **Load example data** to bring the example back.
+> 🤔 *Why did the budget break up with the credit card?*
+> *It felt like it was always being taken for granted… and then charged interest for it.* 💔
 
-## Built with
+---
 
-Plain HTML, CSS and JavaScript in a single `index.html`. No frameworks, no build step. Hosted on GitHub Pages.
+## 🔒 Your data
 
-## Run it locally
+Everything stays in **your browser** 🖥️. Nothing is sent to a server, nobody's peeking at your snack budget 🍫.
 
-Download or clone the repo and open `index.html` in a browser.
+⚠️ Clearing your browser data also clears your budget, so hit **Download backup** every now and then.
+
+🎬 Your first visit loads example data so you can see how it all works. Hit **Clear everything** to start fresh 🧹, or **Load example data** to bring the example back.
+
+---
+
+## 🛠️ Built with
+
+- 📄 Plain **HTML**, **CSS** and **JavaScript**, all in a single `index.html`
+- 🚫 No frameworks, no build step, no drama
+- 🚀 Hosted on **GitHub Pages**
+
+> 🧮 *My budget and my code have one thing in common: they both work perfectly until I actually run them.* 😅
+
+---
+
+## 💻 Run it locally
+
+Clone the repo and open `index.html` in your browser:
 
 ```bash
 git clone https://github.com/ToomKris/budgetcalulator.git
 cd budgetcalulator
-open index.html   # or double-click the file
+open index.html   # or just double-click the file 🖱️
 ```
 
-## Publish on GitHub Pages
+## 🌍 Publish on GitHub Pages
 
-In the repo, go to **Settings → Pages**, choose **Deploy from a branch**, pick `main` and `/ (root)`, and save. The site appears at `https://toomkris.github.io/<repo-name>/` after a minute or two.
+1. Go to **Settings → Pages** in the repo ⚙️
+2. Choose **Deploy from a branch**
+3. Pick `main` and `/ (root)` and save 💾
+4. Wait a minute or two ☕ and the site appears at `https://toomkris.github.io/budgetcalulator/` 🎉
+
+---
+
+Made with ☕, 💚 and a slightly worrying number of 🍕 transactions by **Kris Toom**.

@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budget Calculator</title>
+<meta name="description" content="Track income, spending, monthly budgets, loans and trip budgets in your browser. Nothing leaves your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EEF2EC;
+    --sheet: #FAFCF8;
+    --ink: #1F2A26;
+    --ink-soft: #5B6A63;
+    --rule: #D3DCD5;
+    --green: #2F6B4F;
+    --green-soft: #DCEBE2;
+    --plum: #8E3B5A;
+    --plum-soft: #F3E1E8;
+    --amber: #B07A12;
+    --amber-soft: #F6EBD3;
+    --blue: #2E5E8C;
+    --c-needs: #2E5E8C;
+    --c-wants: #B5577A;
+    --c-debt: #C0612B;
+    --c-savings: #2F8A5E;
+    --c-left: #C9D4CC;
+    --radius-lg: 14px;
+    --radius-sm: 7px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141A17; --sheet: #1C2420; --ink: #E7EEE9; --ink-soft: #9AA9A1; --rule: #2E3934;
+      --green: #6FC39A; --green-soft: #1F3329; --plum: #E08AAA; --plum-soft: #3A2430;
+      --amber: #E3B25A; --amber-soft: #3A3020; --blue: #8DB6E0;
+      --c-needs: #5C8EC2; --c-wants: #D07A9B; --c-debt: #DD8350; --c-savings: #4FB585; --c-left: #33403A;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums; line-height: 1.5;
+  }
+  a { color: var(--green); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+
+  /* Top bar */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .back { font-size: .9rem; text-decoration: none; color: var(--ink-soft); }
+  .back:hover { color: var(--green); }
+  .month-nav { display: flex; align-items: center; gap: .3rem; }
+  .month-nav button { border: 1px solid var(--rule); background: var(--sheet); border-radius: 50%; width: 2.2rem; height: 2.2rem; cursor: pointer; }
+  .month-nav button:hover { border-color: var(--green); }
+  .month-label { min-width: 9.5rem; text-align: center; font-weight: 600; }
+
+  /* Hero: the money bar */
+  .hero { margin: 2rem 0 1.5rem; }
+  .hero h1 { font-size: clamp(1.1rem, 2vw, 1.25rem); font-weight: 500; color: var(--ink-soft); margin: 0; }
+  .left-amount { font-size: clamp(3rem, 9vw, 5.5rem); font-weight: 700; letter-spacing: -.03em; line-height: 1; margin: .3rem 0 .4rem; }
+  .left-amount.neg { color: var(--plum); }
+  .left-sub { color: var(--ink-soft); margin: 0 0 1.4rem; }
+  .moneybar { display: flex; height: 3.2rem; border-radius: var(--radius-lg); overflow: hidden; background: var(--c-left); }
+  .moneybar span { height: 100%; transition: width .5s ease; min-width: 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; margin-top: .8rem; font-size: .92rem; }
+  .legend i { display: inline-block; width: .8rem; height: .8rem; border-radius: 3px; margin-right: .4rem; vertical-align: -1px; }
+  .legend b { font-weight: 600; margin-left: .3rem; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: .3rem; border-bottom: 1px solid var(--rule); margin: 2rem 0 1.5rem; overflow-x: auto; }
+  .tabs button { background: none; border: none; padding: .7rem .9rem; cursor: pointer; color: var(--ink-soft); border-bottom: 3px solid transparent; white-space: nowrap; font-weight: 500; }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--green); }
+  .panel[hidden] { display: none; }
+
+  /* Generic blocks */
+  .sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius-lg); padding: 1.2rem; }
+  .grid { display: grid; gap: 1rem; }
+  .grid.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  h2 { font-size: 1.25rem; margin: 0 0 .9rem; font-weight: 600; }
+  h3 { font-size: 1rem; margin: 0 0 .6rem; font-weight: 600; }
+  .muted { color: var(--ink-soft); }
+  .small { font-size: .88rem; }
+  .pos { color: var(--green); } .neg { color: var(--plum); }
+  .row-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .row-head h2 { margin: 0; }
+
+  .btn { border: 1px solid var(--green); background: var(--green); color: var(--sheet); border-radius: var(--radius-sm); padding: .5rem .9rem; cursor: pointer; font-weight: 500; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.ghost { background: transparent; color: var(--green); }
+  .btn.danger { border-color: var(--plum); background: transparent; color: var(--plum); }
+  .icon-btn { background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: .2rem .4rem; border-radius: 5px; }
+  .icon-btn:hover { color: var(--plum); background: var(--plum-soft); }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+  .stat .label { color: var(--ink-soft); font-size: .9rem; }
+  .stat .val { font-size: 1.6rem; font-weight: 600; letter-spacing: -.01em; }
+
+  /* Progress rows */
+  .bar-row { margin-bottom: .9rem; }
+  .bar-row .top-line { display: flex; justify-content: space-between; gap: .6rem; font-size: .95rem; }
+  .track { height: .55rem; background: var(--rule); border-radius: 99px; overflow: hidden; margin-top: .3rem; }
+  .fill { height: 100%; border-radius: 99px; background: var(--green); }
+  .fill.warn { background: var(--amber); } .fill.over { background: var(--plum); }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .94rem; }
+  th { text-align: left; font-weight: 500; color: var(--ink-soft); padding: .5rem .5rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  td { padding: .55rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr.planned td { color: var(--ink-soft); font-style: italic; }
+  .pill { display: inline-block; padding: .05rem .5rem; border-radius: 99px; font-size: .82rem; white-space: nowrap; background: var(--green-soft); }
+  .pill.expense { background: var(--plum-soft); } .pill.loan { background: var(--amber-soft); } .pill.transfer { background: var(--rule); }
+  .empty { padding: 2rem 1rem; text-align: center; color: var(--ink-soft); }
+
+  /* Filters + inline edit */
+  .filters { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .bar-row select, .filters input, .filters select, .field input, .field select, .field textarea, td input, td select {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-sm); padding: .45rem .6rem; min-width: 0;
+  }
+  td input { width: 100%; max-width: 9rem; }
+  td input.wide { max-width: 14rem; }
+  .filters input[type="search"] { flex: 1 1 200px; }
+
+  /* Dialog form */
+  dialog { border: none; border-radius: var(--radius-lg); padding: 0; background: var(--sheet); color: var(--ink); width: min(560px, calc(100vw - 2rem)); }
+  dialog::backdrop { background: rgba(20, 30, 25, .45); }
+  dialog form { padding: 1.4rem; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .field { display: flex; flex-direction: column; gap: .25rem; font-size: .9rem; }
+  .field.full { grid-column: 1 / -1; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.2rem; }
+  @media (max-width: 520px) { .fields { grid-template-columns: 1fr; } }
+
+  .toast { position: fixed; left: 50%; bottom: 1.2rem; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: .6rem 1rem; border-radius: var(--radius-sm); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+  .toast.show { opacity: 1; }
+  footer { margin-top: 3rem; color: var(--ink-soft); font-size: .88rem; display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <a class="back" href="https://toomkris.github.io/work/">← Back to portfolio</a>
+    <div class="month-nav" aria-label="Choose month">
+      <button id="prev-month" aria-label="Previous month">‹</button>
+      <span class="month-label" id="month-label" aria-live="polite"></span>
+      <button id="next-month" aria-label="Next month">›</button>
+    </div>
+  </div>
+
+  <section class="hero">
+    <h1>Left to spend</h1>
+    <div class="left-amount" id="left-amount">€0</div>
+    <p class="left-sub" id="left-sub"></p>
+    <div class="moneybar" id="moneybar" role="img"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="overview">Overview</button>
+    <button role="tab" aria-selected="false" data-tab="transactions">Transactions</button>
+    <button role="tab" aria-selected="false" data-tab="budgets">Monthly budgets</button>
+    <button role="tab" aria-selected="false" data-tab="loans">Loans</button>
+    <button role="tab" aria-selected="false" data-tab="trips">Trips &amp; events</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="panel" id="panel-overview">
+    <div class="stats sheet" id="stats"></div>
+    <div class="grid two" style="margin-top:1rem">
+      <div class="sheet">
+        <h2>Budget vs. spent</h2>
+        <div id="budget-bars"></div>
+      </div>
+      <div class="sheet">
+        <h2>Planned spending</h2>
+        <div id="planned-list"></div>
+        <h2 style="margin-top:1.5rem">Needs a category</h2>
+        <div id="uncat-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRANSACTIONS -->
+  <section class="panel" id="panel-transactions" hidden>
+    <div class="row-head">
+      <h2>Transactions</h2>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <label class="btn ghost" for="csv-input" style="display:inline-block">Import Revolut CSV</label>
+        <input type="file" id="csv-input" accept=".csv,text/csv" hidden>
+        <button class="btn" id="add-tx">Add transaction</button>
+      </div>
+    </div>
+    <div class="filters">
+      <input type="search" id="tx-search" placeholder="Search name or notes" aria-label="Search transactions">
+      <select id="tx-type" aria-label="Filter by type"><option value="">All types</option></select>
+      <select id="tx-cat" aria-label="Filter by category"><option value="">All categories</option></select>
+      <label class="small muted" style="display:flex;align-items:center;gap:.3rem"><input type="checkbox" id="tx-all-months"> All months</label>
+    </div>
+    <div class="sheet table-wrap"><table>
+      <thead><tr><th>Date</th><th>Name</th><th>Type</th><th>Category</th><th>Status</th><th class="num">Amount</th><th></th></tr></thead>
+      <tbody id="tx-body"></tbody>
+    </table></div>
+  </section>
+
+  <!-- BUDGETS -->
+  <section class="panel" id="panel-budgets" hidden>
+    <div class="row-head">
+      <h2>Monthly budgets</h2>
+      <button class="btn" id="add-budget">Add budget line</button>
+    </div>
+    <p class="muted small" style="margin-top:-.4rem">Your plan only. These numbers don't change when you spend; the overview compares them with what you actually spent.</p>
+    <div class="sheet table-wrap"><table>
+      <thead><tr><th>Name</th><th>Group</th><th>Category it tracks</th><th class="num">Monthly budget</th><th></th></tr></thead>
+      <tbody id="budget-body"></tbody>
+      <tfoot id="budget-foot"></tfoot>
+    </table></div>
+  </section>
+
+  <!-- LOANS -->
+  <section class="panel" id="panel-loans" hidden>
+    <div class="row-head">
+      <h2>Loans</h2>
+      <button class="btn" id="add-loan">Add loan</button>
+    </div>
+    <p class="muted small" style="margin-top:-.4rem">Add a transaction with type Loan payment and pick the loan, and the payoff bar moves.</p>
+    <div class="grid two" id="loan-cards"></div>
+  </section>
+
+  <!-- TRIPS -->
+  <section class="panel" id="panel-trips" hidden>
+    <div class="row-head">
+      <h2>Trips &amp; events</h2>
+      <button class="btn" id="add-trip">Add trip or event</button>
+    </div>
+    <p class="muted small" style="margin-top:-.4rem">Set a budget for a trip, event or birthday, link transactions to it, and see what's left.</p>
+    <div class="grid two" id="trip-cards"></div>
+  </section>
+
+  <footer>
+    <span>Your data is saved in this browser only.</span>
+    <button class="btn ghost" id="export">Download backup</button>
+    <label class="btn ghost" for="restore-input">Restore backup</label>
+    <input type="file" id="restore-input" accept="application/json,.json" hidden>
+    <button class="btn ghost" id="demo">Load example data</button>
+    <button class="btn danger" id="reset">Clear everything</button>
+  </footer>
+</div>
+
+<!-- Transaction dialog -->
+<dialog id="tx-dialog">
+  <form method="dialog" id="tx-form">
+    <h2 id="tx-dialog-title">Add transaction</h2>
+    <div class="fields">
+      <label class="field full">Name<input name="name" required></label>
+      <label class="field">Amount (€)<input name="amount" type="number" step="0.01" min="0" required></label>
+      <label class="field">Date<input name="date" type="date" required></label>
+      <label class="field">Type<select name="type"></select></label>
+      <label class="field">Category<select name="category"></select></label>
+      <label class="field">Status<select name="status"></select></label>
+      <label class="field">Account<select name="account"></select></label>
+      <label class="field">Payment method<select name="method"></select></label>
+      <label class="field">Loan<select name="loan"></select></label>
+      <label class="field full">Trip / event<select name="trip"></select></label>
+      <label class="field full">Notes<textarea name="notes" rows="2"></textarea></label>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn" value="save" id="tx-save">Save transaction</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Loan dialog -->
+<dialog id="loan-dialog">
+  <form method="dialog" id="loan-form">
+    <h2 id="loan-dialog-title">Add loan</h2>
+    <div class="fields">
+      <label class="field full">Name<input name="name" required></label>
+      <label class="field">Loan type<select name="loanType"></select></label>
+      <label class="field">Lender<input name="lender"></label>
+      <label class="field">Original amount (€)<input name="original" type="number" step="0.01" min="0" required></label>
+      <label class="field">Monthly payment (€)<input name="monthly" type="number" step="0.01" min="0"></label>
+      <label class="field">Interest rate (%)<input name="rate" type="number" step="0.01" min="0"></label>
+      <label class="field">Due day<input name="dueDay" type="number" min="1" max="31"></label>
+      <label class="field">Start date<input name="start" type="date"></label>
+      <label class="field">Status<select name="status"></select></label>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn" value="save">Save loan</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Trip dialog -->
+<dialog id="trip-dialog">
+  <form method="dialog" id="trip-form">
+    <h2 id="trip-dialog-title">Add trip or event</h2>
+    <div class="fields">
+      <label class="field full">Name<input name="name" required></label>
+      <label class="field">Budget (€)<input name="budget" type="number" step="0.01" min="0" required></label>
+      <label class="field">Date<input name="date" type="date"></label>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn" value="save">Save trip</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ------------------------------------------------------------------
+   Options (mirrors the Finance Hub set-up)
+------------------------------------------------------------------ */
+const TYPES = ["💸 Expense", "💰 Income", "🏦 Loan payment", "🌱 Savings", "🔁 Transfer"];
+const EXPENSE_CATS = ["🏠 Rent & Bills", "🛒 Groceries", "🍔 Eating Out", "🛍️ Shopping", "🚇 Transport", "🎬 Entertainment", "✈️ Travel", "💪 Gym & Health", "📺 Subscriptions", "📸 Content Creation", "🎁 Events & Gifts", "🏦 Loan Payments", "🌱 Savings", "❓ Other"];
+const INCOME_CATS = ["💼 Salary", "🚀 Side Hustle", "🤝 Brand Deals", "📈 Investment", "↩️ Refund"];
+const CATEGORIES = [...EXPENSE_CATS, ...INCOME_CATS];
+const STATUSES = ["✅ Paid", "🗓️ Planned"];
+const ACCOUNTS = ["Revolut", "Cash", "Other Bank"];
+const METHODS = ["💳 Card", "💵 Cash", "🏧 Bank Transfer", "📱 PayPal / App", "🔁 Direct Debit"];
+const GROUPS = ["🏠 Needs", "🎈 Wants", "🏦 Debt", "🌱 Savings", "💰 Income"];
+const LOAN_TYPES = ["Student", "Car", "Personal", "Credit Card", "Mortgage", "Family / Friend", "Other"];
+const LOAN_STATUSES = ["🔥 Active", "⏸️ Paused", "🏆 Paid off"];
+const GROUP_COLORS = { "🏠 Needs": "--c-needs", "🎈 Wants": "--c-wants", "🏦 Debt": "--c-debt", "🌱 Savings": "--c-savings" };
+
+/* ------------------------------------------------------------------
+   Storage
+------------------------------------------------------------------ */
+const KEY = "budget-calculator-v1";
+let state = load();
+let viewMonth = new Date(); viewMonth.setDate(1);
+
+function emptyState() { return { transactions: [], budgets: [], loans: [], trips: [] }; }
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return Object.assign(emptyState(), JSON.parse(raw));
+  } catch (e) {}
+  return demoState();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+function demoState() {
+  const now = new Date();
+  const d = (day, offset = 0) => {
+    const x = new Date(now.getFullYear(), now.getMonth() + offset, day);
+    return x.toISOString().slice(0, 10);
+  };
+  const loanId = uid(), tripId = uid();
+  return {
+    budgets: [
+      { id: uid(), name: "Income", group: "💰 Income", category: "💼 Salary", amount: 1800 },
+      { id: uid(), name: "Rent & Bills", group: "🏠 Needs", category: "🏠 Rent & Bills", amount: 650 },
+      { id: uid(), name: "Groceries", group: "🏠 Needs", category: "🛒 Groceries", amount: 250 },
+      { id: uid(), name: "Transport", group: "🏠 Needs", category: "🚇 Transport", amount: 50 },
+      { id: uid(), name: "Eating Out", group: "🎈 Wants", category: "🍔 Eating Out", amount: 100 },
+      { id: uid(), name: "Shopping", group: "🎈 Wants", category: "🛍️ Shopping", amount: 80 },
+      { id: uid(), name: "Subscriptions", group: "🎈 Wants", category: "📺 Subscriptions", amount: 30 },
+      { id: uid(), name: "Loan Payments", group: "🏦 Debt", category: "🏦 Loan Payments", amount: 150 },
+      { id: uid(), name: "Savings", group: "🌱 Savings", category: "🌱 Savings", amount: 200 }
+    ],
+    loans: [
+      { id: loanId, name: "Student loan", loanType: "Student", lender: "Bank", original: 5000, monthly: 150, rate: 2.5, dueDay: 15, start: d(1, -10), status: "🔥 Active" }
+    ],
+    trips: [
+      { id: tripId, name: "Weekend in Riga", budget: 300, date: d(20) }
+    ],
+    transactions: [
+      { id: uid(), name: "Salary", amount: 1800, date: d(1), type: "💰 Income", category: "💼 Salary", status: "✅ Paid", account: "Revolut", method: "🏧 Bank Transfer" },
+      { id: uid(), name: "Rent", amount: 600, date: d(2), type: "💸 Expense", category: "🏠 Rent & Bills", status: "✅ Paid", account: "Revolut", method: "🔁 Direct Debit" },
+      { id: uid(), name: "Electricity", amount: 45, date: d(5), type: "💸 Expense", category: "🏠 Rent & Bills", status: "✅ Paid", account: "Revolut", method: "🔁 Direct Debit" },
+      { id: uid(), name: "Rimi", amount: 64.2, date: d(4), type: "💸 Expense", category: "🛒 Groceries", status: "✅ Paid", account: "Revolut", method: "💳 Card" },
+      { id: uid(), name: "Lidl", amount: 38.9, date: d(9), type: "💸 Expense", category: "🛒 Groceries", status: "✅ Paid", account: "Revolut", method: "💳 Card" },
+      { id: uid(), name: "Pizza night", amount: 27.5, date: d(7), type: "💸 Expense", category: "🍔 Eating Out", status: "✅ Paid", account: "Revolut", method: "💳 Card" },
+      { id: uid(), name: "Spotify", amount: 11.99, date: d(3), type: "💸 Expense", category: "📺 Subscriptions", status: "✅ Paid", account: "Revolut", method: "💳 Card" },
+      { id: uid(), name: "Bus card", amount: 30, date: d(1), type: "💸 Expense", category: "🚇 Transport", status: "✅ Paid", account: "Revolut", method: "💳 Card" },
+      { id: uid(), name: "Loan payment", amount: 150, date: d(15), type: "🏦 Loan payment", category: "🏦 Loan Payments", status: "✅ Paid", account: "Revolut", method: "🏧 Bank Transfer", loan: loanId },
+      { id: uid(), name: "Loan payment", amount: 150, date: d(15, -1), type: "🏦 Loan payment", category: "🏦 Loan Payments", status: "✅ Paid", account: "Revolut", method: "🏧 Bank Transfer", loan: loanId },
+      { id: uid(), name: "Savings pot", amount: 200, date: d(2), type: "🌱 Savings", category: "🌱 Savings", status: "✅ Paid", account: "Revolut", method: "🏧 Bank Transfer" },
+      { id: uid(), name: "Bus tickets to Riga", amount: 42, date: d(10), type: "💸 Expense", category: "✈️ Travel", status: "✅ Paid", account: "Revolut", method: "💳 Card", trip: tripId },
+      { id: uid(), name: "Hostel in Riga", amount: 90, date: d(19), type: "💸 Expense", category: "✈️ Travel", status: "🗓️ Planned", account: "Revolut", method: "💳 Card", trip: tripId },
+      { id: uid(), name: "Card payment 4412", amount: 18.4, date: d(11), type: "💸 Expense", category: "❓ Other", status: "✅ Paid", account: "Revolut", method: "💳 Card" }
+    ]
+  };
+}
+
+/* ------------------------------------------------------------------
+   Helpers
+------------------------------------------------------------------ */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+const money = (n) => fmt.format(Math.round((n || 0) * 100) / 100);
+const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+const inMonth = (t) => (t.date || "").slice(0, 7) === monthKey(viewMonth);
+const isPaid = (t) => t.status !== "🗓️ Planned";
+const options = (list, selected, blank) =>
+  (blank !== undefined ? `<option value="">${esc(blank)}</option>` : "") +
+  list.map(o => { const v = typeof o === "string" ? o : o.value; const l = typeof o === "string" ? o : o.label;
+    return `<option value="${esc(v)}"${v === selected ? " selected" : ""}>${esc(l)}</option>`; }).join("");
+function typeClass(type) {
+  if (type === "💸 Expense") return "expense";
+  if (type === "🏦 Loan payment") return "loan";
+  if (type === "🔁 Transfer") return "transfer";
+  return "";
+}
+function cashFlow(t) {
+  if (t.type === "💰 Income") return t.amount;
+  if (t.type === "🔁 Transfer") return 0;
+  return -t.amount;
+}
+let toastTimer;
+function toast(msg) {
+  const el = $("#toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+/* ------------------------------------------------------------------
+   Rendering
+------------------------------------------------------------------ */
+function render() {
+  $("#month-label").textContent = viewMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  renderHero(); renderOverview(); renderTransactions(); renderBudgets(); renderLoans(); renderTrips();
+}
+
+function monthTotals() {
+  const paid = state.transactions.filter(t => inMonth(t) && isPaid(t));
+  const sum = (f) => paid.filter(f).reduce((a, t) => a + t.amount, 0);
+  const income = sum(t => t.type === "💰 Income");
+  const groupOf = (t) => {
+    if (t.type === "🏦 Loan payment") return "🏦 Debt";
+    if (t.type === "🌱 Savings") return "🌱 Savings";
+    const b = state.budgets.find(b => b.category === t.category && b.group !== "💰 Income");
+    return b ? b.group : "🎈 Wants";
+  };
+  const groups = { "🏠 Needs": 0, "🎈 Wants": 0, "🏦 Debt": 0, "🌱 Savings": 0 };
+  paid.filter(t => !["💰 Income", "🔁 Transfer"].includes(t.type)).forEach(t => { groups[groupOf(t)] += t.amount; });
+  const out = Object.values(groups).reduce((a, b) => a + b, 0);
+  return { income, groups, out, left: income - out };
+}
+
+function renderHero() {
+  const { income, groups, out, left } = monthTotals();
+  const el = $("#left-amount");
+  el.textContent = money(left);
+  el.classList.toggle("neg", left < 0);
+  $("#left-sub").textContent = income
+    ? `${money(income)} came in, ${money(out)} went out.`
+    : out ? `${money(out)} went out and no income is logged yet.` : "Add your income and spending to see where it goes.";
+  const base = Math.max(income, out) || 1;
+  const parts = Object.entries(groups).map(([g, v]) =>
+    `<span style="width:${(v / base) * 100}%;background:var(${GROUP_COLORS[g]})" title="${esc(g)}: ${money(v)}"></span>`).join("");
+  $("#moneybar").innerHTML = parts;
+  $("#moneybar").setAttribute("aria-label", Object.entries(groups).map(([g, v]) => `${g.slice(2).trim()} ${money(v)}`).join(", ") + `, left ${money(left)}`);
+  $("#legend").innerHTML = Object.entries(groups).map(([g, v]) =>
+    `<span><i style="background:var(${GROUP_COLORS[g]})"></i>${esc(g.slice(2).trim())}<b>${money(v)}</b></span>`).join("") +
+    `<span><i style="background:var(--c-left)"></i>Left<b>${money(Math.max(left, 0))}</b></span>`;
+}
+
+function renderOverview() {
+  const { income, out } = monthTotals();
+  const monthTx = state.transactions.filter(inMonth);
+  const planned = monthTx.filter(t => !isPaid(t));
+  const plannedTotal = planned.reduce((a, t) => a + (t.type === "💰 Income" ? 0 : t.amount), 0);
+  const balance = state.transactions.filter(isPaid).reduce((a, t) => a + cashFlow(t), 0);
+  $("#stats").innerHTML = [
+    ["Total income", money(income), "pos"],
+    ["Total expense", money(out), "neg"],
+    ["Planned spending", money(plannedTotal), ""],
+    ["Balance (all time)", money(balance), balance < 0 ? "neg" : ""]
+  ].map(([l, v, c]) => `<div class="stat"><div class="label">${l}</div><div class="val ${c}">${v}</div></div>`).join("");
+
+  const spentBy = (cat) => monthTx.filter(t => isPaid(t) && t.category === cat && t.type !== "💰 Income").reduce((a, t) => a + t.amount, 0);
+  const lines = state.budgets.filter(b => b.group !== "💰 Income");
+  $("#budget-bars").innerHTML = lines.length ? lines.map(b => {
+    const spent = spentBy(b.category);
+    const pct = b.amount ? spent / b.amount : (spent ? 1.01 : 0);
+    const goal = ["🌱 Savings", "🏦 Debt"].includes(b.group);
+    const cls = pct > 1 && !goal ? "over" : pct > .85 && !goal ? "warn" : "";
+    const note = goal ? (spent >= b.amount ? "done" : `${money(b.amount - spent)} to go`)
+      : pct > 1 ? `<span class="neg">${money(spent - b.amount)} over</span>` : `${money(b.amount - spent)} left`;
+    return `<div class="bar-row"><div class="top-line"><span>${esc(b.name)}</span><span class="small">${money(spent)} / ${money(b.amount)} · ${note}</span></div>
+      <div class="track"><div class="fill ${cls}" style="width:${Math.min(pct, 1) * 100}%"></div></div></div>`;
+  }).join("") : `<div class="empty">No budget lines yet. Add some under Monthly budgets.</div>`;
+
+  $("#planned-list").innerHTML = planned.length ? planned.map(t =>
+    `<div class="bar-row"><div class="top-line"><span>${esc(t.name)} <span class="muted small">${esc(t.date)}</span></span><span>${money(t.amount)}</span></div></div>`).join("")
+    : `<p class="muted small">Nothing planned for this month. Add a transaction with status Planned to see it here.</p>`;
+
+  const uncat = state.transactions.filter(t => !t.category || t.category === "❓ Other");
+  $("#uncat-list").innerHTML = uncat.length ? uncat.slice(0, 8).map(t =>
+    `<div class="bar-row"><div class="top-line"><span>${esc(t.name)} <span class="muted small">${esc(t.date)}</span></span>
+      <select data-quick-cat="${t.id}" aria-label="Category for ${esc(t.name)}">${options(CATEGORIES, t.category)}</select></div></div>`).join("")
+    : `<p class="muted small">Everything has a category.</p>`;
+}
+
+function renderTransactions() {
+  const q = $("#tx-search").value.trim().toLowerCase();
+  const type = $("#tx-type").value, cat = $("#tx-cat").value, all = $("#tx-all-months").checked;
+  const rows = state.transactions
+    .filter(t => (all || inMonth(t)) && (!type || t.type === type) && (!cat || t.category === cat) &&
+      (!q || `${t.name} ${t.notes || ""}`.toLowerCase().includes(q)))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  $("#tx-body").innerHTML = rows.length ? rows.map(t => {
+    const flow = cashFlow(t);
+    return `<tr class="${isPaid(t) ? "" : "planned"}">
+      <td>${esc(t.date)}</td>
+      <td><button class="icon-btn" style="color:var(--ink);text-align:left" data-edit-tx="${t.id}">${esc(t.name)}</button></td>
+      <td><span class="pill ${typeClass(t.type)}">${esc(t.type)}</span></td>
+      <td>${esc(t.category || "—")}</td>
+      <td>${esc(t.status)}</td>
+      <td class="num ${flow > 0 ? "pos" : flow < 0 ? "neg" : ""}">${flow > 0 ? "+" : flow < 0 ? "−" : ""}${money(t.amount)}</td>
+      <td class="num"><button class="icon-btn" data-del-tx="${t.id}" aria-label="Delete ${esc(t.name)}">✕</button></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7" class="empty">No transactions here yet. Add one, or import a Revolut CSV.</td></tr>`;
+}
+
+function renderBudgets() {
+  $("#budget-body").innerHTML = state.budgets.map(b => `<tr>
+    <td><input class="wide" value="${esc(b.name)}" data-budget="${b.id}" data-field="name" aria-label="Budget name"></td>
+    <td><select data-budget="${b.id}" data-field="group" aria-label="Group">${options(GROUPS, b.group)}</select></td>
+    <td><select data-budget="${b.id}" data-field="category" aria-label="Category">${options(CATEGORIES, b.category)}</select></td>
+    <td class="num"><input type="number" step="1" min="0" value="${b.amount}" data-budget="${b.id}" data-field="amount" aria-label="Monthly budget" style="text-align:right"></td>
+    <td class="num"><button class="icon-btn" data-del-budget="${b.id}" aria-label="Delete ${esc(b.name)}">✕</button></td>
+  </tr>`).join("") || `<tr><td colspan="5" class="empty">No budget lines yet.</td></tr>`;
+  const inc = state.budgets.filter(b => b.group === "💰 Income").reduce((a, b) => a + (+b.amount || 0), 0);
+  const outB = state.budgets.filter(b => b.group !== "💰 Income").reduce((a, b) => a + (+b.amount || 0), 0);
+  $("#budget-foot").innerHTML = `<tr><td colspan="3"><b>Planned income − planned spending</b></td>
+    <td class="num"><b class="${inc - outB < 0 ? "neg" : "pos"}">${money(inc - outB)}</b></td><td></td></tr>`;
+}
+
+function loanPaid(loan) {
+  return state.transactions.filter(t => t.loan === loan.id && isPaid(t)).reduce((a, t) => a + t.amount, 0);
+}
+function renderLoans() {
+  $("#loan-cards").innerHTML = state.loans.length ? state.loans.map(l => {
+    const paid = loanPaid(l), remaining = Math.max(l.original - paid, 0);
+    const pct = l.original ? Math.min(paid / l.original, 1) : 0;
+    const months = l.monthly ? Math.ceil(remaining / l.monthly) : null;
+    return `<div class="sheet">
+      <div class="row-head" style="margin-bottom:.4rem"><h3 style="margin:0">${esc(l.name)}</h3>
+        <span><button class="icon-btn" data-edit-loan="${l.id}">Edit</button><button class="icon-btn" data-del-loan="${l.id}" aria-label="Delete ${esc(l.name)}">✕</button></span></div>
+      <p class="muted small" style="margin:0 0 .8rem">${esc(l.status)} · ${esc(l.loanType)}${l.lender ? " · " + esc(l.lender) : ""}${l.rate ? " · " + l.rate + "%" : ""}${l.dueDay ? " · due on day " + l.dueDay : ""}</p>
+      <div class="top-line" style="display:flex;justify-content:space-between"><span>${money(paid)} paid</span><span>${Math.round(pct * 100)}%</span></div>
+      <div class="track"><div class="fill" style="width:${pct * 100}%"></div></div>
+      <div class="stats" style="margin-top:1rem">
+        <div class="stat"><div class="label">Remaining</div><div class="val">${money(remaining)}</div></div>
+        <div class="stat"><div class="label">Months left</div><div class="val">${remaining === 0 ? "Done" : months ?? "—"}</div></div>
+      </div></div>`;
+  }).join("") : `<div class="sheet empty">No loans. Add one to track how fast it's shrinking.</div>`;
+}
+
+function renderTrips() {
+  $("#trip-cards").innerHTML = state.trips.length ? state.trips.map(tr => {
+    const linked = state.transactions.filter(t => t.trip === tr.id);
+    const spent = linked.filter(isPaid).reduce((a, t) => a + t.amount, 0);
+    const planned = linked.filter(t => !isPaid(t)).reduce((a, t) => a + t.amount, 0);
+    const left = tr.budget - spent - planned;
+    const pct = tr.budget ? (spent + planned) / tr.budget : 0;
+    return `<div class="sheet">
+      <div class="row-head" style="margin-bottom:.4rem"><h3 style="margin:0">${esc(tr.name)}</h3>
+        <span><button class="icon-btn" data-edit-trip="${tr.id}">Edit</button><button class="icon-btn" data-del-trip="${tr.id}" aria-label="Delete ${esc(tr.name)}">✕</button></span></div>
+      <p class="muted small" style="margin:0 0 .8rem">${tr.date ? esc(tr.date) + " · " : ""}budget ${money(tr.budget)}</p>
+      <div class="track"><div class="fill ${pct > 1 ? "over" : pct > .85 ? "warn" : ""}" style="width:${Math.min(pct, 1) * 100}%"></div></div>
+      <div class="stats" style="margin-top:1rem">
+        <div class="stat"><div class="label">Spent</div><div class="val">${money(spent)}</div></div>
+        <div class="stat"><div class="label">Planned</div><div class="val">${money(planned)}</div></div>
+        <div class="stat"><div class="label">Left</div><div class="val ${left < 0 ? "neg" : "pos"}">${money(left)}</div></div>
+      </div></div>`;
+  }).join("") : `<div class="sheet empty">No trips or events. Add one and link transactions to it.</div>`;
+}
+
+/* ------------------------------------------------------------------
+   Tabs + month navigation
+------------------------------------------------------------------ */
+document.querySelectorAll(".tabs button").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b === btn));
+  document.querySelectorAll(".panel").forEach(p => p.hidden = p.id !== "panel-" + btn.dataset.tab);
+}));
+$("#prev-month").onclick = () => { viewMonth.setMonth(viewMonth.getMonth() - 1); render(); };
+$("#next-month").onclick = () => { viewMonth.setMonth(viewMonth.getMonth() + 1); render(); };
+["#tx-search", "#tx-type", "#tx-cat", "#tx-all-months"].forEach(s => $(s).addEventListener("input", renderTransactions));
+$("#tx-type").innerHTML += options(TYPES);
+$("#tx-cat").innerHTML += options(CATEGORIES);
+
+/* ------------------------------------------------------------------
+   Transaction dialog
+------------------------------------------------------------------ */
+const txForm = $("#tx-form");
+let editingTx = null;
+function openTx(t) {
+  editingTx = t ? t.id : null;
+  $("#tx-dialog-title").textContent = t ? "Edit transaction" : "Add transaction";
+  const f = txForm.elements;
+  f.type.innerHTML = options(TYPES, t?.type || "💸 Expense");
+  f.category.innerHTML = options(CATEGORIES, t?.category || "❓ Other");
+  f.status.innerHTML = options(STATUSES, t?.status || "✅ Paid");
+  f.account.innerHTML = options(ACCOUNTS, t?.account || "Revolut");
+  f.method.innerHTML = options(METHODS, t?.method || "💳 Card");
+  f.loan.innerHTML = options(state.loans.map(l => ({ value: l.id, label: l.name })), t?.loan || "", "None");
+  f.trip.innerHTML = options(state.trips.map(x => ({ value: x.id, label: x.name })), t?.trip || "", "None");
+  f.name.value = t?.name || ""; f.amount.value = t?.amount ?? "";
+  const today = new Date(); const def = monthKey(viewMonth) === monthKey(today) ? today : viewMonth;
+  f.date.value = t?.date || new Date(def.getTime() - def.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  f.notes.value = t?.notes || "";
+  $("#tx-dialog").returnValue = ""; $("#tx-dialog").showModal(); f.name.focus();
+}
+txForm.elements.type.addEventListener("change", (e) => {
+  const c = txForm.elements.category;
+  if (e.target.value === "🏦 Loan payment") c.value = "🏦 Loan Payments";
+  if (e.target.value === "🌱 Savings") c.value = "🌱 Savings";
+  if (e.target.value === "💰 Income" && !INCOME_CATS.includes(c.value)) c.value = "💼 Salary";
+});
+$("#tx-dialog").addEventListener("close", () => {
+  if ($("#tx-dialog").returnValue !== "save") return;
+  const f = txForm.elements;
+  const t = { id: editingTx || uid(), name: f.name.value.trim(), amount: Math.abs(parseFloat(f.amount.value) || 0), date: f.date.value,
+    type: f.type.value, category: f.category.value, status: f.status.value, account: f.account.value, method: f.method.value,
+    loan: f.loan.value || undefined, trip: f.trip.value || undefined, notes: f.notes.value.trim() };
+  const i = state.transactions.findIndex(x => x.id === t.id);
+  if (i >= 0) state.transactions[i] = { ...state.transactions[i], ...t }; else state.transactions.push(t);
+  save(); render(); toast(editingTx ? "Transaction saved" : "Transaction added");
+});
+$("#add-tx").onclick = () => openTx(null);
+
+/* ------------------------------------------------------------------
+   Loan + trip dialogs
+------------------------------------------------------------------ */
+let editingLoan = null, editingTrip = null;
+function openLoan(l) {
+  editingLoan = l ? l.id : null;
+  $("#loan-dialog-title").textContent = l ? "Edit loan" : "Add loan";
+  const f = $("#loan-form").elements;
+  f.loanType.innerHTML = options(LOAN_TYPES, l?.loanType || "Student");
+  f.status.innerHTML = options(LOAN_STATUSES, l?.status || "🔥 Active");
+  ["name", "lender", "original", "monthly", "rate", "dueDay", "start"].forEach(k => f[k].value = l?.[k] ?? "");
+  $("#loan-dialog").returnValue = ""; $("#loan-dialog").showModal();
+}
+$("#loan-dialog").addEventListener("close", () => {
+  if ($("#loan-dialog").returnValue !== "save") return;
+  const f = $("#loan-form").elements;
+  const l = { id: editingLoan || uid(), name: f.name.value.trim(), loanType: f.loanType.value, lender: f.lender.value.trim(),
+    original: +f.original.value || 0, monthly: +f.monthly.value || 0, rate: +f.rate.value || 0, dueDay: +f.dueDay.value || null,
+    start: f.start.value, status: f.status.value };
+  const i = state.loans.findIndex(x => x.id === l.id);
+  if (i >= 0) state.loans[i] = l; else state.loans.push(l);
+  save(); render(); toast("Loan saved");
+});
+$("#add-loan").onclick = () => openLoan(null);
+
+function openTrip(tr) {
+  editingTrip = tr ? tr.id : null;
+  $("#trip-dialog-title").textContent = tr ? "Edit trip or event" : "Add trip or event";
+  const f = $("#trip-form").elements;
+  f.name.value = tr?.name || ""; f.budget.value = tr?.budget ?? ""; f.date.value = tr?.date || "";
+  $("#trip-dialog").returnValue = ""; $("#trip-dialog").showModal();
+}
+$("#trip-dialog").addEventListener("close", () => {
+  if ($("#trip-dialog").returnValue !== "save") return;
+  const f = $("#trip-form").elements;
+  const tr = { id: editingTrip || uid(), name: f.name.value.trim(), budget: +f.budget.value || 0, date: f.date.value };
+  const i = state.trips.findIndex(x => x.id === tr.id);
+  if (i >= 0) state.trips[i] = tr; else state.trips.push(tr);
+  save(); render(); toast("Trip saved");
+});
+$("#add-trip").onclick = () => openTrip(null);
+
+/* ------------------------------------------------------------------
+   Budgets (inline editing)
+------------------------------------------------------------------ */
+$("#add-budget").onclick = () => {
+  state.budgets.push({ id: uid(), name: "New budget", group: "🎈 Wants", category: "❓ Other", amount: 0 });
+  save(); render();
+  const inputs = document.querySelectorAll('#budget-body input[data-field="name"]');
+  inputs[inputs.length - 1]?.select();
+};
+$("#budget-body").addEventListener("change", (e) => {
+  const el = e.target, b = state.budgets.find(x => x.id === el.dataset.budget);
+  if (!b) return;
+  b[el.dataset.field] = el.dataset.field === "amount" ? (+el.value || 0) : el.value;
+  save(); render();
+});
+
+/* ------------------------------------------------------------------
+   Click delegation: edit / delete / quick category
+------------------------------------------------------------------ */
+document.addEventListener("click", (e) => {
+  const d = e.target.closest("button")?.dataset; if (!d) return;
+  const del = (list, id, label) => { if (!confirm(`Delete ${label}?`)) return; state[list] = state[list].filter(x => x.id !== id); save(); render(); toast("Deleted"); };
+  if (d.editTx) openTx(state.transactions.find(t => t.id === d.editTx));
+  if (d.delTx) del("transactions", d.delTx, "this transaction");
+  if (d.delBudget) del("budgets", d.delBudget, "this budget line");
+  if (d.editLoan) openLoan(state.loans.find(l => l.id === d.editLoan));
+  if (d.delLoan) del("loans", d.delLoan, "this loan");
+  if (d.editTrip) openTrip(state.trips.find(t => t.id === d.editTrip));
+  if (d.delTrip) del("trips", d.delTrip, "this trip");
+});
+document.addEventListener("change", (e) => {
+  const id = e.target.dataset?.quickCat; if (!id) return;
+  const t = state.transactions.find(x => x.id === id);
+  if (t) { t.category = e.target.value; save(); render(); toast("Category saved"); }
+});
+
+/* ------------------------------------------------------------------
+   Revolut CSV import
+   Columns: Type, Product, Started Date, Completed Date, Description, Amount, Fee, Currency, State, Balance
+------------------------------------------------------------------ */
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+const GUESS = [
+  [/rimi|lidl|maxima|selver|prisma|coop|grocery|aldi|tesco/i, "🛒 Groceries"],
+  [/bolt food|wolt|mcdonald|burger|pizza|restaurant|cafe|kohvik|starbucks/i, "🍔 Eating Out"],
+  [/spotify|netflix|youtube|apple\.com|icloud|disney|hbo|chatgpt|claude/i, "📺 Subscriptions"],
+  [/bolt|uber|elron|bus|tallink|fuel|circle k|neste|alexela|parking/i, "🚇 Transport"],
+  [/gym|myfitness|apteek|pharmacy|sport/i, "💪 Gym & Health"],
+  [/airbnb|booking|hotel|hostel|ryanair|airbaltic|lux express/i, "✈️ Travel"],
+  [/rent|üür|elektri|electricity|telia|elisa|tele2|internet/i, "🏠 Rent & Bills"],
+  [/zara|h&m|amazon|temu|aliexpress|ikea|decathlon/i, "🛍️ Shopping"]
+];
+$("#csv-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const rows = parseCSV(await file.text());
+  const head = rows.shift()?.map(h => h.trim().toLowerCase()) || [];
+  const col = (n) => head.indexOf(n);
+  const iType = col("type"), iDate = col("completed date") >= 0 ? col("completed date") : col("started date"),
+    iDesc = col("description"), iAmt = col("amount"), iFee = col("fee"), iState = col("state"), iCur = col("currency");
+  if (iDesc < 0 || iAmt < 0 || iDate < 0) { toast("That file isn't a Revolut statement. It needs Description, Amount and a date column."); e.target.value = ""; return; }
+  let added = 0, skipped = 0;
+  rows.forEach(r => {
+    const importId = `${r[iDate]}|${r[iDesc]}|${r[iAmt]}`;
+    if (state.transactions.some(t => t.importId === importId)) { skipped++; return; }
+    if (iState >= 0 && /reverted|declined|failed/i.test(r[iState] || "")) { skipped++; return; }
+    const amt = parseFloat(r[iAmt]); if (!isFinite(amt) || amt === 0) { skipped++; return; }
+    const desc = r[iDesc] || "Revolut transaction", rType = (r[iType] || "").toUpperCase();
+    let type = amt > 0 ? "💰 Income" : "💸 Expense", category = amt > 0 ? "↩️ Refund" : "❓ Other";
+    if (rType === "TRANSFER" && /pocket|savings|vault/i.test(desc)) { type = "🌱 Savings"; category = "🌱 Savings"; }
+    else if (rType === "EXCHANGE") { type = "🔁 Transfer"; }
+    else if (amt > 0 && /salary|palk|payroll/i.test(desc)) category = "💼 Salary";
+    else if (amt < 0) { const g = GUESS.find(([re]) => re.test(desc)); if (g) category = g[1]; }
+    state.transactions.push({ id: uid(), importId, name: desc, amount: Math.abs(amt) + (iFee >= 0 ? Math.abs(parseFloat(r[iFee]) || 0) : 0),
+      date: (r[iDate] || "").slice(0, 10), type, category, status: "✅ Paid", account: "Revolut",
+      method: rType === "CARD_PAYMENT" ? "💳 Card" : "🏧 Bank Transfer", notes: iCur >= 0 && r[iCur] !== "EUR" ? `Currency: ${r[iCur]}` : "" });
+    added++;
+  });
+  save(); render(); e.target.value = "";
+  toast(`Imported ${added} transaction${added === 1 ? "" : "s"}${skipped ? `, skipped ${skipped}` : ""}. Check "Needs a category" on the overview.`);
+});
+
+/* ------------------------------------------------------------------
+   Backup / restore / reset
+------------------------------------------------------------------ */
+$("#export").onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `budget-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(a.href);
+};
+$("#restore-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data.transactions)) throw new Error();
+    state = Object.assign(emptyState(), data); save(); render(); toast("Backup restored");
+  } catch { toast("That file isn't a budget backup. Choose a file downloaded with Download backup."); }
+  e.target.value = "";
+});
+$("#demo").onclick = () => { if (confirm("Replace your data with the example data?")) { state = demoState(); save(); render(); toast("Example data loaded"); } };
+$("#reset").onclick = () => { if (confirm("Delete all transactions, budgets, loans and trips from this browser?")) { state = emptyState(); save(); render(); toast("Everything cleared"); } };
+
+render();
+</script>
+</body>
+</html>
